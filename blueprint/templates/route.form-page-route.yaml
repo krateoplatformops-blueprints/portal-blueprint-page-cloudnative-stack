@@ -1,0 +1,19 @@
+{{- if eq .Values.form.hasPage true }}
+apiVersion: widgets.templates.krateo.io/v1beta1
+kind: Route
+metadata:
+  name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  widgetData:
+    path:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-blueprint
+    resourceRefId: form-page
+  resourcesRefs:
+    items:
+      - id: form-page
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name: " {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page"
+        namespace: {{ .Release.Namespace }}
+        resource: pages
+        verb: GET
+{{- end }}

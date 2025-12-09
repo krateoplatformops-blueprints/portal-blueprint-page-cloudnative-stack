@@ -9,6 +9,11 @@
 # @schema
 blueprint:
   # @schema
+  # description: Blueprints repo
+  # type: string
+  # @schema
+  repo: cloudnative-stack
+  # @schema
   # description: Blueprints url
   # type: string
   # @schema
@@ -18,49 +23,817 @@ blueprint:
   # type: string
   # required: true
   # @schema
-  version: 0.0.1
+  version: 0.3.2
   # @schema
   # description: Blueprints dedicated page (Composition)
   # type: boolean
   # required: true
   # default: true
   # @schema
-  hasPage: false
+  hasPage: true
+  # @schema
+  # description: Blueprints credentials
+  # type: object
+  # @schema
+  credentials: {}
 
 # @schema
-# description: Blueprint form properties 
+# description: Blueprint form
 # type: object
 # required: true
 # @schema
 form:
   # @schema
-  # description: Blueprint form keys order 
-  # type: boolean
+  # description: Blueprint form widgetData
+  # type: object
   # required: true
-  # default: false
   # @schema
-  alphabeticalOrder: false
+  widgetData:
+    # @schema
+    # description: Blueprint form widgetData schema
+    # type: object
+    # @schema
+    schema: {}
+    # @schema
+    # description: Blueprint form widgetData objectFields
+    # type: array
+    # items:
+    #   type: object
+    #   required: [path, displayField]
+    #   properties:
+    #     path:
+    #       type: string
+    #     displayField:
+    #       type: string
+    # @schema
+    objectFields:
+      - path: frontend.deployments
+        displayField: name
+      - path: backend.deployments
+        displayField: name
+      - path: kafka.topics
+        displayField: topicName
+      - path: hazelcast.clusters
+        displayField: name
+      - path: mongodb.instances
+        displayField: clusterName
+      - path: cloudnativepg.instances
+        displayField: databaseName
+    # @schema
+    # description: Blueprint form widgetData submitActionId
+    # type: string
+    # @schema
+    submitActionId: submit-action-from-string-schema
+    # @schema
+    # description: Blueprint form widgetData actions
+    # type: object
+    # @schema
+    actions:
+      # @schema
+      # description: Blueprint form widgetData actions rest
+      # type: array
+      # items:
+      #   type: object
+      #   properties:
+      #     id:
+      #       type: string
+      #     onEventNavigateTo:
+      #       type: object
+      #       required: [eventReason, url] 
+      #       properties:
+      #         eventReason:
+      #           type: string
+      #         url:
+      #           type: string
+      #         urlIfNoPage:
+      #           type: string
+      #         timeout:
+      #           type: integer
+      #           default: 50
+      #     successMessage:
+      #       type: string
+      #     resourceRefId:
+      #       type: string
+      #     type:
+      #       type: string
+      #       enum: [rest]      
+      #     payloadToOverride:
+      #       type: array
+      #       items:
+      #         type: object
+      #         required: [name, value] 
+      #         properties:
+      #           name:
+      #             type: string
+      #           value:
+      #             type: string
+      #     headers:
+      #       type: array
+      #       items:
+      #         type: string
+      # @schema
+      rest:
+        - id: submit-action-from-string-schema
+          onEventNavigateTo:
+            eventReason: "CompositionCreated"
+            url: '${ "/compositions/" + .response.metadata.namespace + "/" + (.response.kind | ascii_downcase) + "/" + .response.metadata.name }'
+            urlIfNoPage: "/blueprints"
+            timeout: 50
+          successMessage: '${"Successfully deployed " + .response.metadata.name + " composition in namespace " + .response.metadata.namespace }'
+          resourceRefId: composition-to-post
+          type: rest
+          payloadToOverride:
+            - name: spec
+              value: ${ .json | del(.composition) }
+            - name: metadata.name
+              value: ${ .json.composition.name }
+            - name: metadata.namespace
+              value: ${ .json.composition.namespace }
+          headers:
+            - "Content-Type: application/json"
+  # @schema
+  # description: Blueprint form widgetDataTemplate
+  # type: array
+  # items:
+  #   type: object
+  #   required: [forPath, expression] 
+  #   properties:
+  #     forPath:
+  #       type: string 
+  #     expression:
+  #       type: string
+  # @schema
+  widgetDataTemplate:
+    - forPath: stringSchema
+      expression: >
+        ${
+          .getNotOrderedSchema["values.schema.json"] as $schema
+          | .allowedNamespaces[] as $allowedNamespaces
+          | .featuresFrontend as $featuresFrontend
+          | .featuresBackend as $featuresBackend
+
+          # --- inject "composition" under top-level "properties" ---
+          | "\"properties\": " | length as $keylen
+          | ($schema | index("\"properties\": ")) as $idx
+          | ($schema[0:$idx + $keylen]) as $prefix
+          | ($schema[$idx + $keylen:]) as $rest
+          | {
+              composition: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string"
+                  },
+                  namespace: {
+                    type: "string",
+                    enum: $allowedNamespaces
+                  }
+                },
+                required: ["name", "namespace"]
+              }
+            } | tostring as $injected
+          | ($prefix + $injected[:-1] + "," + $rest[1:]) as $withComposition
+
+          # --- ensure top-level "required" includes "composition" ---
+          | (
+              if ($withComposition | test("\n  \"required\": \\[")) then
+                if ($withComposition | test("\n  \"required\": \\[[^\\]]*\"composition\"")) then
+                  # "composition" already present at top-level
+                  $withComposition
+                else
+                  # prepend "composition" to existing top-level required array
+                  ($withComposition
+                  | gsub("\n  \"required\": \\["; "\n  \"required\": [\"composition\", "))
+                end
+              else
+                # no top-level required: insert before top-level "type": "object"
+                ($withComposition | index("\n  \"type\": \"object\"")) as $tidx
+                | ($withComposition[0:$tidx+1]) as $p2
+                | ($withComposition[$tidx+1:]) as $r2
+                | $p2 + "  \"required\": [\"composition\"],\n" + $r2
+              end
+            ) as $schemaWithRequired
+
+          # --- build enum strings for frontend/backend features (arrays of strings) ---
+          | $featuresFrontend as $ff
+          | ($ff | map("\"" + . + "\"") | join(", ")) as $feEnumItems
+          | ("[" + $feEnumItems + "]") as $frontendEnum
+
+          | $featuresBackend as $fb
+          | ($fb | map("\"" + . + "\"") | join(", ")) as $beEnumItems
+          | ("[" + $beEnumItems + "]") as $backendEnum
+
+          # --- pass 1: override/add enum for FRONTEND.features[] ---
+          | (
+              if ($schemaWithRequired
+                    | test("(?s)\"frontend\"[\\s\\S]*\"features\"[\\s\\S]*\"enum\"")) then
+                # enum already present → replace only its array
+                ($schemaWithRequired
+                | gsub(
+                    "(?s)(?<prefix>\"frontend\"[\\s\\S]*\"features\"[\\s\\S]*\"enum\"\\s*:\\s*)\\[[^]]*\\]"
+                    ;
+                    "\(.prefix)\($frontendEnum)"
+                  ))
+              else
+                # no enum yet → inject after \"type\": \"string\" in frontend.features.items
+                ($schemaWithRequired
+                | gsub(
+                    "(?s)(?<prefix>\"frontend\"[\\s\\S]*?\"features\"[\\s\\S]*?\"items\"[\\s\\S]*?\"type\": \"string\")"
+                    ;
+                    "\(.prefix),\n                \"enum\": \($frontendEnum)"
+                  ))
+              end
+            ) as $schemaAfterFrontend
+
+          # --- pass 2: override/add enum for BACKEND.features[] ---
+          | (
+              if ($schemaAfterFrontend
+                    | test("(?s)\"backend\"[\\s\\S]*\"features\"[\\s\\S]*\"enum\"")) then
+                # enum already present → replace only its array
+                ($schemaAfterFrontend
+                | gsub(
+                    "(?s)(?<prefix>\"backend\"[\\s\\S]*\"features\"[\\s\\S]*\"enum\"\\s*:\\s*)\\[[^]]*\\]"
+                    ;
+                    "\(.prefix)\($backendEnum)"
+                  ))
+              else
+                # no enum yet → inject after \"type\": \"string\" in backend.features.items
+                ($schemaAfterFrontend
+                | gsub(
+                    "(?s)(?<prefix>\"backend\"[\\s\\S]*?\"features\"[\\s\\S]*?\"items\"[\\s\\S]*?\"type\": \"string\")"
+                    ;
+                    "\(.prefix),\n                \"enum\": \($backendEnum)"
+                  ))
+              end
+            )
+        }
+  # @schema
+  # description: Blueprint form resourcesRefsTemplate
+  # type: object
+  # properties:
+  #   iterator:
+  #     type: string 
+  #   template:
+  #     type: object
+  #     properties:
+  #       id:
+  #         type: string
+  #       apiVersion:
+  #         type: string
+  #       namespace:
+  #         type: string
+  #       resource:
+  #         type: string
+  #       verb:
+  #         type: string
+  #         enum: [POST, PUT, PATCH, DELETE, GET]
+  # @schema    
+  resourcesRefsTemplate:
+    iterator: ${ .allowedNamespacesWithResource[] }
+    template:
+      id: composition-to-post
+      apiVersion: composition.krateo.io/0-3-2
+      namespace: ${ .namespace }
+      resource: ${ .resource }
+      verb: POST
+  # @schema
+  # description: Blueprint form apiRef
+  # type: object
+  # @schema  
+  apiRef:
+    # @schema
+    # description: Blueprint form apiRef name
+    # type: string
+    # @schema  
+    name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-restaction-schema-override-allows-ns'
+    # @schema
+    # description: Blueprint form apiRef namespace
+    # type: string
+    # @schema 
+    # leave empty to use .Release.Namespace
+    namespace: ""
+  # @schema
+  # description: Blueprint form hasPage
+  # type: boolean
+  # @schema  
+  hasPage: true
+  # @schema
+  # description: Blueprint form instructions
+  # type: string
+  # @schema  
+  instructions: |
+    # cloudnative-stack
+
+    A Cloud Native Stack based on Frontend / Backend / Kafka / Hazelcast / MongoDB / CloudNativePG
+
+    ## Overview
+    
+    This Krateo blueprint deploys a complex, multi-tier application stack on Kubernetes. It is designed to be highly configurable and relies on best-practice Kubernetes operators for managing stateful components like databases and message queues.
+    The blueprint will provision the following components:
+
+    -   A **Frontend** pod (e.g., Nginx) to serve a user interface.
+    -   A **Backend** pod (e.g., Spring Boot) for business logic.
+    -   A **Kafka Topic** managed by the Strimzi operator.
+    -   A **Hazelcast** in-memory data grid cluster managed by the Hazelcast Platform Operator.
+    -   A **MongoDB** replica set managed by the MongoDB Community Kubernetes Operator.
+    -   A **PostgreSQL** cluster managed by the CloudNative-PG operator.
+
+    ## Requirements
+
+    For this blueprint to function correctly, your Kubernetes cluster **must** have the following operators installed and running. Please follow their official documentation for installation instructions.
+
+    1. **Strimzi (for Kafka):**
+        -   **Purpose:** Manages Kafka clusters and topics.
+        -   **Installation Guide:** [Strimzi Deployment Documentation](https://strimzi.io/docs/operators/latest/deploying)
+
+    2.  **Hazelcast Platform Operator:**
+        -   **Purpose:** Manages Hazelcast in-memory computing clusters.
+        -   **Installation Guide:** [Hazelcast Operator Deployment](https://docs.hazelcast.com/operator/5.14/)
+
+    3.  **MongoDB Kubernetes Operator:**
+        -   **Purpose:** Manages MongoDB Community replica sets and clusters.
+        -   **Installation Guide:** [https://github.com/mongodb/mongodb-kubernetes](https://github.com/mongodb/mongodb-kubernetes)
+
+    4.  **CloudNative-PG (for PostgreSQL):**
+        -   **Purpose:** Manages the full lifecycle of a PostgreSQL cluster.
+        -   **Installation Guide:** [CloudNative-PG Installation](https://cloudnative-pg.io/documentation/1.27/)
 
 # @schema
-# description: Blueprint panel properties 
+# description: Blueprint panel
 # type: object
-# required: true
-# @schema
+# @schema  
 panel:
   # @schema
-  # description: Blueprint panel title 
+  # description: Blueprint panel markdown
   # type: string
-  # required: true
+  # @schema  
+  markdown: Click here to deploy a **{{ .Release.Name }}** composition
   # @schema
-  title: GitHub Scaffolding
-  # @schema
-  # description: Blueprint panel icon properties 
+  # description: Blueprint panel apiRef
   # type: object
-  # @schema
-  icon:
+  # @schema  
+  apiRef:
     # @schema
-    # description: Bleprint panel icon name 
+    # description: Blueprint panel apiRef name
     # type: string
-    # required: true
+    # @schema  
+    name: "{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-restaction-compositiondefinition-schema-ns"
     # @schema
-    name: fa-cubes
+    # description: Blueprint panel apiRef namespace
+    # type: string
+    # @schema  
+    namespace: ""
+  # @schema
+  # description: Blueprint panel widgetData
+  # type: object
+  # @schema  
+  widgetData:
+    # @schema
+    # description: Blueprint panel widgetData clickActionId
+    # type: string
+    # @schema 
+    clickActionId: blueprint-click-action
+    # @schema
+    # description: Blueprint panel widgetData footer
+    # type: array
+    # items:
+    #   type: object
+    #   properties:
+    #     resourceRefId:
+    #       type: string  
+    # @schema 
+    footer:
+      - resourceRefId: blueprint-panel-button
+    # @schema
+    # description: Blueprint panel widgetData tags
+    # type: array
+    # items:
+    #   type: string
+    # @schema 
+    tags:
+      - '{{ .Release.Namespace }}'
+      - '{{ .Values.blueprint.version }}'
+    # @schema
+    # description: Blueprint panel widgetData icon
+    # type: object
+    # @schema 
+    icon:
+      # @schema
+      # description: Blueprint panel widgetData icon name
+      # type: string
+      # @schema 
+      name: fa-cloud
+    # @schema
+    # description: Blueprint panel widgetData items
+    # type: array
+    # items:
+    #   type: object
+    #   properties:
+    #     resourceRefId:
+    #       type: string  
+    # @schema 
+    items:
+      - resourceRefId: blueprint-panel-markdown
+    # @schema
+    # description: Blueprint panel widgetData title
+    # type: string
+    # @schema 
+    title: Cloud Native Stack
+    # @schema
+    # description: Blueprint panel widgetData actions
+    # type: object
+    # @schema
+    actions:
+      # @schema
+      # description: Blueprint panel widgetData actions openDrawer
+      # type: array
+      # items:
+      #   type: object
+      #   properties:
+      #     id:
+      #       type: string
+      #     resourceRefId:
+      #       type: string
+      #     type:
+      #       type: string
+      #       enum: [openDrawer]
+      #     size:
+      #       type: string
+      #       enum: [default,large]
+      # @schema
+      # Used when .Values.form.hasPage == false
+      openDrawer:
+        - id: blueprint-click-action
+          resourceRefId: blueprint-form
+          type: openDrawer
+          size: large
+          # title will be taken from widgetData.title in the template
+      # @schema
+      # description: Blueprint panel widgetData actions navigate
+      # type: array
+      # items:
+      #   type: object
+      #   properties:
+      #     id:
+      #       type: string
+      #     path:
+      #       type: string
+      #     type:
+      #       type: string
+      #       enum: [navigate]
+      # @schema
+      # Used when .Values.form.hasPage == true
+      navigate:
+        - id: blueprint-click-action
+          path: '/{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-blueprint'
+          type: navigate
+  # @schema
+  # description: Blueprint panel widgetDataTemplate
+  # type: array
+  # items:
+  #   type: object
+  #   required: [forPath, expression] 
+  #   properties:
+  #     forPath:
+  #       type: string 
+  #     expression:
+  #       type: string
+  # @schema
+  widgetDataTemplate:
+    - forPath: icon.color
+      expression: >
+        ${
+          (
+            (
+              .getCompositionDefinition?.status?.conditions // []
+            )
+            | map(
+                select(.type == "Ready")
+                | if .status == "False" then
+                    "orange"
+                  elif .status == "True" then
+                    "green"
+                  else
+                    "grey"
+                  end
+              )
+            | first
+          )
+          // "grey"
+        }
+    - forPath: headerLeft
+      expression: >
+        ${
+          (
+            (
+              .getCompositionDefinition?.status?.conditions // []
+            )
+            | map(
+                select(.type == "Ready")
+                | if .status == "False" then
+                    "Ready:False"
+                  elif .status == "True" then
+                    "Ready:True"
+                  else
+                    "Ready:Unknown"
+                  end
+              )
+            | first
+          )
+          // "Ready:Unknown"
+        }
+    - forPath: headerRight
+      expression: >
+        ${
+          .getCompositionDefinition // {}
+          | .metadata.creationTimestamp
+          // "In the process of being created"
+        }
+  # @schema
+  # description: Blueprint panel resourcesRefs
+  # type: object
+  # @schema  
+  resourcesRefs:
+    # @schema
+    # description: Blueprint panel resourcesRefs items
+    # type: array
+    # items:
+    #   type: object
+    #   properties:
+    #     id:
+    #       type: string
+    #     apiVersion:
+    #       type: string
+    #     name:
+    #       type: string
+    #     namespace:
+    #       type: string
+    #     resource:
+    #       type: string
+    #     verb:
+    #       type: string
+    #       enum: [POST, PUT, PATCH, DELETE, GET] 
+    # @schema 
+    items:
+      - id: blueprint-panel-markdown
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-panel-markdown'
+        namespace: ''
+        resource: markdowns
+        verb: GET
+      - id: blueprint-panel-button
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-panel-button-cleanup'
+        namespace: ''
+        resource: buttons
+        verb: DELETE
+      - id: blueprint-form
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form'
+        namespace: ''
+        resource: forms
+        verb: GET
+
+# @schema
+# description: Blueprint panel resourcesRefs items
+# type: array
+# items:
+#   type: object
+#   properties:
+#     name:
+#       description: RESTAction name
+#     namespace:
+#       description: RESTAction namespace
+#     api:
+#       description: API represents a request to an HTTP service
+#       type: array
+#       items:
+#         properties:
+#           continueOnError:
+#             type: boolean
+#           dependsOn:
+#             type: object
+#             description: DependsOn reference to another API on which this depends
+#             properties:
+#               iterator:
+#                 description: Iterator defines a field on which iterate.
+#                 type: string
+#               name:
+#                 description: Name of another API on which this depends
+#                 type: string
+#             required: [name]
+#           endpointRef:
+#             type: object
+#             description: EndpointRef a reference to an Endpoint
+#             properties:
+#               name:
+#                 description: Name of the referenced object.
+#                 type: string
+#               namespace:
+#                 description: Namespace of the referenced object.
+#                 type: string
+#             required: [name,namespace]
+#           errorKey:
+#             type: string
+#           exportJwt:
+#             type: boolean
+#           filter:
+#             type: string
+#           headers:
+#             type: array
+#             description: Headers is an array of custom request headers
+#             items:
+#               type: string
+#           name:
+#             description: Name is a (unique) identifier
+#             type: string
+#           path:
+#             description: Path is the request URI path
+#             type: string
+#           payload:
+#             description: Payload is the request body
+#             type: string
+#           verb:
+#             description: Verb is the request method (GET if omitted)
+#             type: string
+#         required: [name]
+#     filter:
+#       type: string
+# @schema 
+restActions:
+  # 1) restaction-compositiondefinition-schema-ns
+  - name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-restaction-compositiondefinition-schema-ns'
+    # Optional; if empty, the template will use .Release.Namespace
+    namespace: ""
+
+    api:
+      - name: getCompositionDefinition
+        path: "/apis/core.krateo.io/v1alpha1/namespaces/{{ .Release.Namespace }}/compositiondefinitions/{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}"
+        verb: GET
+        headers:
+          - "Accept: application/json"
+
+      - name: getCompositionDefinitionResource
+        path: "/apis/core.krateo.io/v1alpha1/namespaces/{{ .Release.Namespace }}/compositiondefinitions/{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}"
+        verb: GET
+        headers:
+          - "Accept: application/json"
+        filter: ".getCompositionDefinitionResource.status.resource"
+
+      - name: getOrderedSchema
+        path: >
+          ${ "/apis/apiextensions.k8s.io/v1/customresourcedefinitions/" + (.getCompositionDefinitionResource) + ".composition.krateo.io" }
+        verb: GET
+        headers:
+          - "Accept: application/json"
+        dependsOn:
+          name: getCompositionDefinitionResource
+        filter: >
+          .getOrderedSchema.spec.versions[]
+          | select(.name == "v{{ .Values.blueprint.version | replace "." "-" }}")
+          | .schema.openAPIV3Schema.properties.spec
+
+      - name: getNotOrderedSchema
+        path: >
+          ${ "/api/v1/namespaces/{{ .Release.Namespace }}/configmaps/" + (.getCompositionDefinitionResource) + "-v{{ .Values.blueprint.version | replace "." "-" }}-jsonschema-configmap" }
+        verb: GET
+        headers:
+          - "Accept: application/json"
+        dependsOn:
+          name: getCompositionDefinitionResource
+        filter: ".getNotOrderedSchema.data"
+
+      - name: getNamespaces
+        path: "/api/v1/namespaces"
+        verb: GET
+        headers:
+          - "Accept: application/json"
+        filter: "[.getNamespaces.items[] | .metadata.name]"
+
+    filter: >
+      {
+        getOrderedSchema: .getOrderedSchema,
+        getNotOrderedSchema: .getNotOrderedSchema,
+        getCompositionDefinition: .getCompositionDefinition,
+        getCompositionDefinitionResource: .getCompositionDefinitionResource,
+        possibleNamespacesForComposition:
+        [
+          .getNamespaces[] as $ns |
+          {
+            resource: .getCompositionDefinitionResource,
+            namespace: $ns
+          }
+        ]
+      }
+
+  # 2) restaction-schema-override-allows-ns
+  - name: '{{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-restaction-schema-override-allows-ns'
+    namespace: ""
+
+    api:
+      - name: getCompositionDefinitionSchemaNs
+        path: "/call?apiVersion=templates.krateo.io/v1&resource=restactions&name={{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-restaction-compositiondefinition-schema-ns&namespace={{ .Release.Namespace }}"
+        verb: GET
+        endpointRef:
+          name: snowplow-endpoint
+          namespace: '{{ default "krateo-system" (default dict .Values.global).krateoNamespace }}'
+        headers:
+          - "Accept: application/json"
+        continueOnError: true
+        errorKey: getCompositionDefinitionSchemaNs
+        exportJwt: true
+
+      - name: allowedNamespaces
+        continueOnError: true
+        dependsOn:
+          name: getCompositionDefinitionSchemaNs
+          iterator: .getCompositionDefinitionSchemaNs.status.possibleNamespacesForComposition
+        path: "/apis/authorization.k8s.io/v1/selfsubjectaccessreviews"
+        verb: POST
+        headers:
+          - "Content-Type: application/json"
+        payload: |
+          ${
+            {
+              "kind": "SelfSubjectAccessReview",
+              "apiVersion": "authorization.k8s.io/v1",
+              "spec": {
+                "resourceAttributes": {
+                  "namespace": .namespace,
+                  "verb": "create",
+                  "group": "composition.krateo.io",
+                  "version": "v{{ .Values.blueprint.version | replace "." "-" }}",
+                  "resource": .resource
+                }
+              }
+            }
+          }
+      - name: featuresFrontend
+        verb: GET
+        headers:
+        - 'Accept: application/vnd.github+json'
+        - 'X-GitHub-Api-Version: 2022-11-28'
+        path: "/search/repositories?q=org:krateoplatformops-test+topic:feature+topic:frontend"
+        endpointRef:
+          name: github-api
+          namespace: '{{ default "krateo-system" (default dict .Values.global).krateoNamespace }}'
+        filter: |
+          .featuresFrontend.items | map((.name | sub("-feature$"; "")))
+
+      - name: featuresBackend
+        verb: GET
+        headers:
+        - 'Accept: application/vnd.github+json'
+        - 'X-GitHub-Api-Version: 2022-11-28'
+        path: "/search/repositories?q=org:krateoplatformops-test+topic:feature+topic:backend"
+        endpointRef:
+          name: github-api
+          namespace: '{{ default "krateo-system" (default dict .Values.global).krateoNamespace }}'
+        filter: |
+          .featuresBackend.items | map((.name | sub("-feature$"; "")))
+
+    filter: >
+      {
+        getOrderedSchema: .getCompositionDefinitionSchemaNs.status.getOrderedSchema,
+        getNotOrderedSchema: .getCompositionDefinitionSchemaNs.status.getNotOrderedSchema,
+        getCompositionDefinitionResource: .getCompositionDefinitionSchemaNs.status.getCompositionDefinitionResource,
+        featuresFrontend: .featuresFrontend,
+        featuresBackend: .featuresBackend,        
+        allowedNamespaces: [
+          [.allowedNamespaces[] | .status.allowed] as $allowed
+          | [.getCompositionDefinitionSchemaNs.status.possibleNamespacesForComposition[] | .namespace]
+          | to_entries
+          | map(select($allowed[.key] == true) | .value)
+        ],
+        allowedNamespacesWithResource: [
+          [.allowedNamespaces[] | .status.allowed] as $allowed
+          | .getCompositionDefinitionSchemaNs.status.getCompositionDefinitionResource as $resource
+          | [.getCompositionDefinitionSchemaNs.status.possibleNamespacesForComposition[] | .namespace]
+          | to_entries
+          | map(
+              select($allowed[.key] == true)
+              | {
+                  namespace: .value,
+                  resource: $resource
+                }
+            )
+        ]
+      }
+
+# @schema
+# description: global properties section - if the Helm chart is installed via Composition Dynamic Controller, these are injected by default
+# type: object
+# @schema
+global:
+  # @schema
+  # description: Composition Custom Resource metadata name
+  # type: string
+  # examples: [cloudnative-stack]
+  # @schema    
+  compositionName: cloudnative-stack
+  # @schema
+  # description: Composition Custom Resource kind
+  # type: string
+  # examples: [CloudnativeStack]
+  # @schema    
+  compositionKind: CloudnativeStack

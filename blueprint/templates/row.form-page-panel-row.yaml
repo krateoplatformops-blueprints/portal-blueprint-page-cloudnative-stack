@@ -1,0 +1,32 @@
+{{- if eq .Values.form.hasPage true }}
+kind: Row
+apiVersion: widgets.templates.krateo.io/v1beta1
+metadata:
+  name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel-row
+  namespace: {{ .Release.Namespace }}
+spec:
+  widgetData:
+    allowedResources:
+      - columns
+    alignment: top
+    items:
+      - resourceRefId: form-page-panel-row-column1
+        size: 12
+      - resourceRefId: form-page-panel-row-column2
+        size: 12
+        alignment: right
+  resourcesRefs:
+    items:
+      - id: form-page-panel-row-column1
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel-row-column1
+        namespace: {{ .Release.Namespace }}
+        resource: columns
+        verb: GET
+      - id: form-page-panel-row-column2
+        apiVersion: widgets.templates.krateo.io/v1beta1
+        name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel-row-column2
+        namespace: {{ .Release.Namespace }}
+        resource: columns
+        verb: GET
+{{- end }}

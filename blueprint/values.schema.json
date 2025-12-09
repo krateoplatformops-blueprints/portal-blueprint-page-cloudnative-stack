@@ -1,61 +1,38 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "properties": {
     "blueprint": {
       "additionalProperties": false,
       "description": "Blueprint properties",
       "properties": {
+        "credentials": {
+          "additionalProperties": false,
+          "description": "Blueprints credentials",
+          "title": "credentials",
+          "type": "object"
+        },
         "hasPage": {
-          "description": "Blueprints dedicated page (Composition)",
           "default": true,
+          "description": "Blueprints dedicated page (Composition)",
           "title": "hasPage",
           "type": "boolean"
+        },
+        "url": {
+          "default": "https://marketplace.krateo.io",
+          "description": "Blueprints url",
+          "title": "url",
+          "type": "string"
+        },
+        "repo": {
+          "description": "Blueprints repo",
+          "title": "repo",
+          "type": "string"
         },
         "version": {
           "description": "Blueprints version",
           "title": "version",
           "type": "string"
-        },
-        "url": {
-          "description": "Blueprints url",
-          "title": "version",
-          "type": "string"
-        },
-        "credentials": {
-          "description": "Authentication configuration for private registries",
-          "title": "credentials",
-          "type": "object",
-          "properties": {
-            "username": {
-              "description": "Registry username",
-              "title": "username",
-              "type": "string"
-            },
-            "passwordRef": {
-              "description": "Reference to a secret containing the registry password or token",
-              "title": "passwordRef",
-              "type": "object",
-              "properties": {
-                "key": {
-                  "description": "Secret key",
-                  "title": "key",
-                  "type": "string"
-                },
-                "name": {
-                  "description": "Secret name",
-                  "title": "name",
-                  "type": "string"
-                },
-                "namespace": {
-                  "description": "Secret namespace",
-                  "title": "namespace",
-                  "type": "string"
-                }
-              },
-              "required": ["key", "name", "namespace"]
-            }
-          }
         }
       },
       "required": [
@@ -67,59 +44,579 @@
     },
     "form": {
       "additionalProperties": false,
-      "description": "Blueprint form properties",
+      "description": "Blueprint form",
       "properties": {
-        "alphabeticalOrder": {
+        "apiRef": {
+          "additionalProperties": false,
+          "description": "Blueprint form apiRef",
+          "properties": {
+            "name": {
+              "default": "{{ .Release.Name }}-restaction-schema-override-allows-ns",
+              "description": "Blueprint form apiRef name",
+              "title": "name",
+              "type": "string"
+            },
+            "namespace": {
+              "default": "",
+              "description": "Blueprint form apiRef namespace",
+              "title": "namespace",
+              "type": "string"
+            }
+          },
+          "title": "apiRef",
+          "type": "object"
+        },
+        "hasPage": {
           "default": true,
-          "description": "Blueprint form keys order",
-          "title": "alphabeticalOrder",
+          "description": "Blueprint form hasPage",
+          "title": "hasPage",
           "type": "boolean"
+        },
+        "instructions": {
+          "description": "Blueprint form instructions",
+          "title": "instructions",
+          "type": "string"
+        },
+        "resourcesRefsTemplate": {
+          "additionalProperties": false,
+          "description": "Blueprint form resourcesRefsTemplate",
+          "properties": {
+            "iterator": {
+              "type": "string"
+            },
+            "template": {
+              "properties": {
+                "apiVersion": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "namespace": {
+                  "type": "string"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "verb": {
+                  "enum": [
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "GET"
+                  ],
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "title": "resourcesRefsTemplate",
+          "type": "object"
+        },
+        "widgetData": {
+          "additionalProperties": false,
+          "description": "Blueprint form widgetData",
+          "properties": {
+            "actions": {
+              "additionalProperties": false,
+              "description": "Blueprint form widgetData actions",
+              "properties": {
+                "rest": {
+                  "description": "Blueprint form widgetData actions rest",
+                  "items": {
+                    "properties": {
+                      "headers": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "onEventNavigateTo": {
+                        "properties": {
+                          "eventReason": {
+                            "type": "string"
+                          },
+                          "timeout": {
+                            "default": 50,
+                            "type": "integer"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "urlIfNoPage": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "eventReason",
+                          "url"
+                        ],
+                        "type": "object"
+                      },
+                      "payloadToOverride": {
+                        "items": {
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "value"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "resourceRefId": {
+                        "type": "string"
+                      },
+                      "successMessage": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "rest"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "title": "rest",
+                  "type": "array"
+                }
+              },
+              "title": "actions",
+              "type": "object"
+            },
+            "objectFields": {
+              "description": "Blueprint form widgetData objectFields",
+              "items": {
+                "properties": {
+                  "displayField": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "path",
+                  "displayField"
+                ],
+                "type": "object"
+              },
+              "title": "objectFields",
+              "type": "array"
+            },
+            "schema": {
+              "additionalProperties": true,
+              "description": "Blueprint form widgetData schema",
+              "title": "schema",
+              "type": "object"
+            },
+            "submitActionId": {
+              "default": "submit-action-from-string-schema",
+              "description": "Blueprint form widgetData submitActionId",
+              "title": "submitActionId",
+              "type": "string"
+            }
+          },
+          "title": "widgetData",
+          "type": "object"
+        },
+        "widgetDataTemplate": {
+          "description": "Blueprint form widgetDataTemplate",
+          "items": {
+            "properties": {
+              "expression": {
+                "type": "string"
+              },
+              "forPath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "forPath",
+              "expression"
+            ],
+            "type": "object"
+          },
+          "title": "widgetDataTemplate",
+          "type": "array"
         }
       },
       "required": [
-        "alphabeticalOrder"
+        "widgetData"
       ],
       "title": "form",
       "type": "object"
     },
     "panel": {
       "additionalProperties": false,
-      "description": "Blueprint panel properties",
+      "description": "Blueprint panel",
       "properties": {
-        "icon": {
+        "apiRef": {
           "additionalProperties": false,
-          "description": "Blueprint panel icon properties",
+          "description": "Blueprint panel apiRef",
           "properties": {
             "name": {
-              "default": "fa-cubes",
-              "description": "Bleprint panel icon name",
+              "default": "{{ .Release.Name }}-restaction-compositiondefinition-schema-ns",
+              "description": "Blueprint panel apiRef name",
               "title": "name",
+              "type": "string"
+            },
+            "namespace": {
+              "default": "",
+              "description": "Blueprint panel apiRef namespace",
+              "title": "namespace",
               "type": "string"
             }
           },
-          "required": [
-            "name"
-          ],
-          "title": "icon",
+          "title": "apiRef",
           "type": "object"
         },
-        "title": {
-          "description": "Blueprint panel title",
-          "title": "title",
+        "markdown": {
+          "default": "Click here to deploy a **{{ .Release.Name }}** composition",
+          "description": "Blueprint panel markdown",
+          "title": "markdown",
+          "type": "string"
+        },
+        "resourcesRefs": {
+          "additionalProperties": false,
+          "description": "Blueprint panel resourcesRefs",
+          "properties": {
+            "items": {
+              "description": "Blueprint panel resourcesRefs items",
+              "items": {
+                "properties": {
+                  "apiVersion": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  },
+                  "resource": {
+                    "type": "string"
+                  },
+                  "verb": {
+                    "enum": [
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE",
+                      "GET"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "title": "items",
+              "type": "array"
+            }
+          },
+          "title": "resourcesRefs",
+          "type": "object"
+        },
+        "widgetData": {
+          "additionalProperties": false,
+          "description": "Blueprint panel widgetData",
+          "properties": {
+            "actions": {
+              "additionalProperties": false,
+              "description": "Blueprint panel widgetData actions",
+              "properties": {
+                "navigate": {
+                  "description": "Blueprint panel widgetData actions navigate",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "navigate"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "title": "navigate",
+                  "type": "array"
+                },
+                "openDrawer": {
+                  "description": "Blueprint panel widgetData actions openDrawer",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "resourceRefId": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "enum": [
+                          "default",
+                          "large"
+                        ],
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "openDrawer"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "title": "openDrawer",
+                  "type": "array"
+                }
+              },
+              "title": "actions",
+              "type": "object"
+            },
+            "clickActionId": {
+              "default": "blueprint-click-action",
+              "description": "Blueprint panel widgetData clickActionId",
+              "title": "clickActionId",
+              "type": "string"
+            },
+            "footer": {
+              "description": "Blueprint panel widgetData footer",
+              "items": {
+                "properties": {
+                  "resourceRefId": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "title": "footer",
+              "type": "array"
+            },
+            "icon": {
+              "additionalProperties": false,
+              "description": "Blueprint panel widgetData icon",
+              "properties": {
+                "name": {
+                  "default": "fa-cloud",
+                  "description": "Blueprint panel widgetData icon name",
+                  "title": "name",
+                  "type": "string"
+                }
+              },
+              "title": "icon",
+              "type": "object"
+            },
+            "items": {
+              "description": "Blueprint panel widgetData items",
+              "items": {
+                "properties": {
+                  "resourceRefId": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "title": "items",
+              "type": "array"
+            },
+            "tags": {
+              "description": "Blueprint panel widgetData tags",
+              "items": {
+                "type": "string"
+              },
+              "title": "tags",
+              "type": "array"
+            },
+            "title": {
+              "description": "Blueprint panel widgetData title",
+              "title": "title",
+              "type": "string"
+            }
+          },
+          "title": "widgetData",
+          "type": "object"
+        },
+        "widgetDataTemplate": {
+          "description": "Blueprint panel widgetDataTemplate",
+          "items": {
+            "properties": {
+              "expression": {
+                "type": "string"
+              },
+              "forPath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "forPath",
+              "expression"
+            ],
+            "type": "object"
+          },
+          "title": "widgetDataTemplate",
+          "type": "array"
+        }
+      },
+      "title": "panel",
+      "type": "object"
+    },
+    "restActions": {
+      "description": "Blueprint panel resourcesRefs items",
+      "items": {
+        "properties": {
+          "api": {
+            "description": "API represents a request to an HTTP service",
+            "items": {
+              "properties": {
+                "continueOnError": {
+                  "type": "boolean"
+                },
+                "dependsOn": {
+                  "description": "DependsOn reference to another API on which this depends",
+                  "properties": {
+                    "iterator": {
+                      "description": "Iterator defines a field on which iterate.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Name of another API on which this depends",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "endpointRef": {
+                  "description": "EndpointRef a reference to an Endpoint",
+                  "properties": {
+                    "name": {
+                      "description": "Name of the referenced object.",
+                      "type": "string"
+                    },
+                    "namespace": {
+                      "description": "Namespace of the referenced object.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "namespace"
+                  ],
+                  "type": "object"
+                },
+                "errorKey": {
+                  "type": "string"
+                },
+                "exportJwt": {
+                  "type": "boolean"
+                },
+                "filter": {
+                  "type": "string"
+                },
+                "headers": {
+                  "description": "Headers is an array of custom request headers",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "description": "Name is a (unique) identifier",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Path is the request URI path",
+                  "type": "string"
+                },
+                "payload": {
+                  "description": "Payload is the request body",
+                  "type": "string"
+                },
+                "verb": {
+                  "description": "Verb is the request method (GET if omitted)",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            },
+            "type": "array"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "name": {
+            "description": "RESTAction name"
+          },
+          "namespace": {
+            "description": "RESTAction namespace"
+          }
+        },
+        "type": "object"
+      },
+      "title": "restActions",
+      "type": "array"
+    },
+    "global": {
+      "additionalProperties": true,
+      "description": "global properties section - if the Helm chart is installed via Composition Dynamic Controller, these are injected by default",
+      "properties": {
+        "compositionKind": {
+          "description": "Composition Custom Resource kind",
+          "examples": [
+            "CloudnativeStack"
+          ],
+          "title": "compositionKind",
+          "type": "string"
+        },
+        "compositionName": {
+          "description": "Composition Custom Resource metadata name",
+          "examples": [
+            "cloudnative-stack"
+          ],
+          "title": "compositionName",
           "type": "string"
         }
       },
+      "title": "global",
+      "type": "object",
       "required": [
-        "title"
-      ],
-      "title": "panel",
-      "type": "object"
+        "compositionKind",
+        "compositionName"
+      ]
     }
   },
   "required": [
     "blueprint",
     "form",
-    "panel"
+    "global"
   ],
   "type": "object"
 }

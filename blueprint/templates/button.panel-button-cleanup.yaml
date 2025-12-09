@@ -1,7 +1,7 @@
 kind: Button
 apiVersion: widgets.templates.krateo.io/v1beta1
 metadata:
-  name: {{ .Release.Name }}-panel-button-cleanup
+  name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-panel-button-cleanup
   namespace: {{ .Release.Namespace }}
 spec:
   widgetData:
@@ -15,7 +15,7 @@ spec:
           resourceRefId: cleanup
           type: rest
           onSuccessNavigateTo: /blueprints
-          successMessage: "Successfully deleted {{ .Release.Name }} blueprint in {{ .Release.Namespace }}"
+          successMessage: "Successfully deleted {{ .Values.global.compositionName }} blueprint in {{ .Release.Namespace }}"
           headers:
           - "Content-Type: application/json"
   resourcesRefs:
@@ -23,6 +23,6 @@ spec:
       - id: cleanup
         apiVersion: composition.krateo.io/v{{ .Chart.Version | replace "." "-" }}
         resource: portalblueprintpages
-        name: {{ .Release.Name }}
+        name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}
         namespace: {{ .Release.Namespace }}
         verb: DELETE

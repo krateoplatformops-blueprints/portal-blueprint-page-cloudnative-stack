@@ -1,0 +1,11 @@
+{{- if eq .Values.form.hasPage true }}
+kind: Markdown
+apiVersion: widgets.templates.krateo.io/v1beta1
+metadata:
+  name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel-markdown
+  namespace: {{ .Release.Namespace }}
+spec:
+  widgetData:
+    markdown: |-
+{{ .Values.form.instructions | nindent 6 }}
+{{- end }}

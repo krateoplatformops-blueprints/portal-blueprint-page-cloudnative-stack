@@ -1,0 +1,58 @@
+{{- range .Values.restActions }}
+apiVersion: templates.krateo.io/v1
+kind: RESTAction
+metadata:
+  name: {{ tpl .name $ }}
+  namespace: {{- if .namespace }} {{ tpl .namespace $ | quote }} {{- else }} {{ $.Release.Namespace | quote }} {{- end }}
+spec:
+  api:
+{{- range .api }}
+    - name: {{ .name | quote }}
+      path: {{ tpl .path $ }}
+      verb: {{ .verb | quote }}
+      {{- if .headers }}
+      headers:
+{{ toYaml .headers | nindent 8 }}
+      {{- end }}
+      {{- if .endpointRef }}
+      endpointRef:
+        {{- if .endpointRef.name }}
+        name: {{ .endpointRef.name | quote }}
+        {{- end }}
+        {{- if .endpointRef.namespace }}
+        namespace: {{ tpl .endpointRef.namespace $ | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .continueOnError }}
+      continueOnError: {{ .continueOnError }}
+      {{- end }}
+      {{- if .errorKey }}
+      errorKey: {{ .errorKey | quote }}
+      {{- end }}
+      {{- if .exportJwt }}
+      exportJwt: {{ .exportJwt }}
+      {{- end }}
+      {{- if .dependsOn }}
+      dependsOn:
+        {{- if .dependsOn.name }}
+        name: {{ .dependsOn.name | quote }}
+        {{- end }}
+        {{- if .dependsOn.iterator }}
+        iterator: {{ .dependsOn.iterator }}
+        {{- end }}
+      {{- end }}
+      {{- if .payload }}
+      payload: |
+{{ tpl .payload $ | nindent 8 }}
+      {{- end }}
+      {{- if .filter }}
+      filter: >
+{{ tpl .filter $ | nindent 8 }}
+      {{- end }}
+{{- end }}
+  {{- if .filter }}
+  filter: >
+{{ tpl .filter $ | nindent 4 }}
+  {{- end }}
+---
+{{- end }}
