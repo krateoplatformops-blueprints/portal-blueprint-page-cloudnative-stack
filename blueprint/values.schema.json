@@ -573,10 +573,12 @@
             "type": "string"
           },
           "name": {
-            "description": "RESTAction name"
+            "description": "RESTAction name",
+            "type": "string"
           },
           "namespace": {
-            "description": "RESTAction namespace"
+            "description": "RESTAction namespace",
+            "type": "string"
           }
         },
         "type": "object"
@@ -616,7 +618,7 @@
   "required": [
     "blueprint",
     "form",
-    "global"
+    "panel"
   ],
   "type": "object"
 }
