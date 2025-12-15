@@ -2,7 +2,7 @@
 kind: Page
 apiVersion: widgets.templates.krateo.io/v1beta1
 metadata:
-  name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page
+  name: {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page
   namespace: {{ .Release.Namespace }}
 spec:
   widgetData:
@@ -14,7 +14,7 @@ spec:
     items:
       - id: form-page-panel
         apiVersion: widgets.templates.krateo.io/v1beta1
-        name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel
+        name: {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form-page-panel
         namespace: {{ .Release.Namespace }}
         resource: panels
         verb: GET
