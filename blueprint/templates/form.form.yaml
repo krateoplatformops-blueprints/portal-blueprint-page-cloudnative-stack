@@ -3,10 +3,6 @@ apiVersion: widgets.templates.krateo.io/v1beta1
 metadata:
   name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-form
   namespace: {{ .Release.Namespace }}
-  labels:
-    krateo.io/blueprint-form-name:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}
-    krateo.io/blueprint-form-namespace: {{ .Release.Namespace }}
-    krateo.io/blueprint-form-path:  {{ .Values.global.compositionKind | lower }}-{{ .Values.global.compositionName }}-blueprint
 spec:
   widgetData:
     schema:
