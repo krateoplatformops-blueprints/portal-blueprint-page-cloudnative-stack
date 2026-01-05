@@ -1,6 +1,6 @@
 apiVersion: v2
-name: portal-blueprint-page
-description: A Blueprint for Krateo Composable Portal Blueprint page
+name: portal-blueprint-page-cloudnative-stack
+description: A Blueprint for Krateo Composable Portal Blueprint page for CloudnativeStack Blueprint
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -22,6 +22,6 @@ icon: "https://github.com/krateoplatformops/krateo/blob/main/docs/media/logo.svg
 keywords:
   - portal
 sources:
-  - https://github.com/krateoplatformops-blueprints/portal-blueprint-page
+  - https://github.com/krateoplatformops-blueprints/portal-blueprint-page-cloudnative-stack
 annotations:
   krateoSupportedVersion: "2.7.0"

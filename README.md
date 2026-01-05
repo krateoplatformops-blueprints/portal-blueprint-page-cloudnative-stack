@@ -21,10 +21,10 @@ Download Helm Chart values:
 ```sh
 helm repo add marketplace https://marketplace.krateo.io
 helm repo update marketplace
-helm inspect values marketplace/portal-blueprint-page --version 1.1.0 > ~/portal-blueprint-page-values.yaml
+helm inspect values marketplace/portal-blueprint-page-cloudnative-stack --version 1.1.0 > ~/portal-blueprint-page-cloudnative-stack-values.yaml
 ```
 
-Modify the *portal-blueprint-page-values.yaml* file as the following example:
+Modify the *portal-blueprint-page-cloudnative-stack-values.yaml* file as the following example:
 
 ```yaml
 blueprint:
@@ -48,7 +48,7 @@ helm install github-scaffolding template \
   --repo https://marketplace.krateo.io \
   --namespace demo-system \
   --create-namespace \
-  -f ~/portal-blueprint-page-values.yaml
+  -f ~/portal-blueprint-page-cloudnative-stack-values.yaml
   --version 1.1.0 \
   --wait
 ```
@@ -62,11 +62,11 @@ cat <<EOF | kubectl apply -f -
 apiVersion: core.krateo.io/v1alpha1
 kind: CompositionDefinition
 metadata:
-  name: portal-blueprint-page
+  name: portal-blueprint-page-cloudnative-stack
   namespace: krateo-system
 spec:
   chart:
-    repo: portal-blueprint-page
+    repo: portal-blueprint-page-cloudnative-stack
     url: https://marketplace.krateo.io
     version: 1.1.0
 EOF
